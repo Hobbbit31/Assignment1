@@ -3,7 +3,8 @@
 #include <chrono>
 #include <set>
 #include <map>
-#include <vector>
+#include <random>
+
 
 using namespace std;
 // You can add any helper functions or classes you need here.
@@ -16,6 +17,71 @@ using namespace std;
  * 
  * 
  */
+
+State intialStateCreation(const ProblemData& data,const map<int, vector<int>> helicopterTripList, const map<int , set<int>> commonVill){
+    State intialState;
+    // entering or copying zone to initialState 
+    intialState.zone = helicopterTripList;
+
+    //copy villagelist and helicopterlist in our intial state;
+
+    intialState.villageList = data.villages;
+    intialState.helicopterList = data.helicopters;
+
+    random_device rd;
+    mt19937 gen(rd());
+    for (auto& [vid, heliSet] : commonVill) {
+        if (!heliSet.empty()) {
+            vector<int> options(heliSet.begin(), heliSet.end());
+
+            // Pick one helicopter randomly
+            uniform_int_distribution<> pickDist(0, (int)options.size() - 1);
+            int chosenHeli = options[pickDist(gen)];
+
+            // Assign vilageid to chosen Helicopter and push back in the vector
+            intialState.zone[chosenHeli].push_back(vid);
+
+           cout << "Assigned common Village V" << vid<< " to Helicopter H" << chosenHeli << endl;
+        }
+    }
+
+    //intialise empty helicopter plans
+
+    for(auto& [hid , vid] : helicopterTripList ){
+        HelicopterPlan heli;
+        heli.helicopter_id = hid;
+        
+        intialState.helicopterPlan.push_back(heli);        
+
+    }
+
+
+
+    // cout << "================== Helicopter Plans ==================" << endl;
+    // for (const auto& plan : intialState.helicopterPlan) {
+    //     cout << "Helicopter H" << plan.helicopter_id 
+    //          << " has " << plan.trips.size() << " trips." << endl;
+
+    //     for (int t = 0; t < plan.trips.size(); t++) {
+    //         const auto& trip = plan.trips[t];
+    //         cout << "  Trip " << t+1 << ": Pickup [Dry=" << trip.dry_food_pickup
+    //              << ", Perishable=" << trip.perishable_food_pickup
+    //              << ", Other=" << trip.other_supplies_pickup << "]" << endl;
+
+    //         for (const auto& drop : trip.drops) {
+    //             cout << "    Drop at Village V" << drop.village_id 
+    //                  << ": Dry=" << drop.dry_food
+    //                  << ", Perishable=" << drop.perishable_food
+    //                  << ", Other=" << drop.other_supplies << endl;
+    //         }
+    //     }
+    // }
+
+    return intialState;
+   
+
+}
+
 
  map<int, vector<int>> buildReachableMap(const ProblemData& problem) {
     map<int, vector<int>> reachableMap;
@@ -160,15 +226,17 @@ Solution solve(const ProblemData& problem) {
         }
         noCommon[heli] = uniqueVillages; // even if empty
     }
-    state.zone = noCommon;
+    //state.zone = noCommon;
 
     // Print result
-    // cout << "Singelton villages per helicopter:\n";
-    // for (auto& [heli, villages] : noCommon) {
-    //     cout << "Helicopter " << heli << " -> ";
-    //     for (int v : villages) cout << v << " ";
-    //     cout << endl;
-    // }
+    cout << "Singelton villages per helicopter:\n";
+    for (auto& [heli, villages] : noCommon) {
+        cout << "Helicopter " << heli << " -> ";
+        for (int v : villages) cout << v << " ";
+        cout << endl;
+    }
+
+    State intialState = intialStateCreation(problem , noCommon, common);
     
 
     // cout << "------------------- Reachable Villages per Helicopter -------------------" << endl;
