@@ -17,6 +17,33 @@ using namespace std;
  * 
  * 
  */
+void printStateInfo(State& state){
+    //This function can be used to print the information regarding any states
+    cout << "---------------------------State info---------------------------" << endl;
+    for(auto& [hid, reachableVillageList] : state.zone){
+        cout << "Helicopter ID : " << hid << " -> { ";
+        for(int vid : reachableVillageList){
+            cout << vid << ", ";
+        } 
+        cout << "}" << endl;
+    }
+    cout << endl;
+    for(HelicopterPlan& helicopterPlan : state.helicopterPlan){
+        cout << "Plan for Helicopter : " << helicopterPlan.helicopter_id << endl;
+        cout << "Number of Trips done : " << helicopterPlan.trips.size() << endl;
+        for(Trip& trip: helicopterPlan.trips){
+            cout << "\tDry Food Picked : " << trip.dry_food_pickup << endl;
+            cout << "\tPerishable Food Picked : " << trip.perishable_food_pickup << endl;
+            cout << "\tOther Supplies Picked : " << trip.other_supplies_pickup << endl;
+            for(Drop& drop: trip.drops){
+                cout << "\t\tVillage Id : " << drop.village_id << endl;
+                cout << "\t\tDry Food Dropped : " << drop.dry_food << endl;
+                cout << "\t\tPerishable Food Dropped : " << drop.perishable_food << endl;
+                cout << "\t\tOther Supplies Dropped : " << drop.other_supplies << endl;
+            }
+        }
+    }
+}
 
 void createRandomInitialState(State& state, const ProblemData& data,const map<int, vector<int>> singletonVillageList, const map<int , set<int>> commonVill){
     /*
@@ -73,6 +100,55 @@ void createRandomInitialState(State& state, const ProblemData& data,const map<in
     //         }
     //     }
     // }
+}
+
+vector<State> generateNeighbourhood(const State& current, const map<int, set<int>>& commonVill) {
+    vector<State> neighbours;
+
+    for (auto& [vid, heliSet] : commonVill) {
+        if (heliSet.size() <= 1) continue; // skip if village only has one option
+
+        // Find current heli
+        int currentHeli = -1;
+        for (auto& [hid, villages] : current.zone) {
+            for (int v : villages) {
+                if (v == vid) {
+                    currentHeli = hid;
+                    break;
+                }
+            }
+            if (currentHeli != -1) break;
+        }
+        if (currentHeli == -1) continue; // safety
+
+        // For each alternative heli
+        for (int newHeli : heliSet) {
+            if (newHeli == currentHeli) continue;
+
+            // Copy state
+            State neighbour = current;
+
+            // Remove vid from current heli's zone
+            auto& oldList = neighbour.zone[currentHeli];
+            for (auto it = oldList.begin(); it != oldList.end(); ++it) {
+                if (*it == vid) {
+                    oldList.erase(it);
+                    break;
+                }
+            }
+
+            // Add to new heli's zone
+            neighbour.zone[newHeli].push_back(vid);
+
+            cout << "Neighbour: V" << vid<< " moved from H" << currentHeli<< " -> H" << newHeli << endl;
+            printStateInfo(neighbour);
+
+            neighbours.push_back(neighbour);
+
+        }
+    }
+
+    return neighbours;
 }
 
 void createBaseTrips(State& state, const ProblemData& data, vector<vector<int>> cityxvillage, vector<vector<int>> villagexvillage){
@@ -132,6 +208,7 @@ void createBaseTrips(State& state, const ProblemData& data, vector<vector<int>> 
         state.helicopterPlan[helicopter.id - 1].trips = trips;
     }
     // cout << "OUT FROM EVERY LOOP" << endl;
+    
 }
 
  map<int, vector<int>> buildReachableMap(const ProblemData& problem) {
@@ -253,34 +330,6 @@ void printReachableVillages(auto& common){
     }
 }
 
-void printStateInfo(State& state){
-    //This function can be used to print the information regarding any states
-    cout << "---------------------------State info---------------------------" << endl;
-    for(auto& [hid, reachableVillageList] : state.zone){
-        cout << "Helicopter ID : " << hid << " -> { ";
-        for(int vid : reachableVillageList){
-            cout << vid << ", ";
-        } 
-        cout << "}" << endl;
-    }
-    cout << endl;
-    for(HelicopterPlan& helicopterPlan : state.helicopterPlan){
-        cout << "Plan for Helicopter : " << helicopterPlan.helicopter_id << endl;
-        cout << "Number of Trips done : " << helicopterPlan.trips.size() << endl;
-        for(Trip& trip: helicopterPlan.trips){
-            cout << "\tDry Food Picked : " << trip.dry_food_pickup << endl;
-            cout << "\tPerishable Food Picked : " << trip.perishable_food_pickup << endl;
-            cout << "\tOther Supplies Picked : " << trip.other_supplies_pickup << endl;
-            for(Drop& drop: trip.drops){
-                cout << "\t\tVillage Id : " << drop.village_id << endl;
-                cout << "\t\tDry Food Dropped : " << drop.dry_food << endl;
-                cout << "\t\tPerishable Food Dropped : " << drop.perishable_food << endl;
-                cout << "\t\tOther Supplies Dropped : " << drop.other_supplies << endl;
-            }
-        }
-    }
-}
-
 Solution solve(const ProblemData& problem) {
     // State state;
 
@@ -308,6 +357,8 @@ Solution solve(const ProblemData& problem) {
 
     //map1.insert(map2.begin(), map2.end());
     auto common = buildCommonNode(reachable);
+
+    printReachableVillages(common);
 
     set<int> commonVillages;
     for (auto& [village, helis] : common) {
@@ -342,6 +393,12 @@ Solution solve(const ProblemData& problem) {
     createBaseTrips(initialstate, problem, cityToVill_Dist, villToVill_Dist);
     // cout << "BACK FROM EVALUATION" << endl;
     printStateInfo(initialstate);
+
+    //generatinf neighbour function for intialstate
+
+    cout<<"______________________________"<<endl;
+    generateNeighbourhood(initialstate, common);
+
     // State intialState = intialStateCreation(problem , noCommon, common);
 
     
