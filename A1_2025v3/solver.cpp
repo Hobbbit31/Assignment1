@@ -18,16 +18,13 @@ using namespace std;
  * 
  */
 
-State intialStateCreation(const ProblemData& data,const map<int, vector<int>> helicopterTripList, const map<int , set<int>> commonVill){
-    State intialState;
-    // entering or copying zone to initialState 
-    intialState.zone = helicopterTripList;
-
-    //copy villagelist and helicopterlist in our intial state;
-
-    intialState.villageList = data.villages;
-    intialState.helicopterList = data.helicopters;
-
+void createRandomInitialState(State& state, const ProblemData& data,const map<int, vector<int>> singletonVillageList, const map<int , set<int>> commonVill){
+    /*
+    Changed the name from IntitalStateCreationg to createRandomInitialState
+    instead of using this funtion to create an initial state. we will provide it with an already created state and 
+    it will randomize it in some manner.
+    changed name from helicopterTripList to singletonVillageList
+    */ 
     random_device rd;
     mt19937 gen(rd());
     for (auto& [vid, heliSet] : commonVill) {
@@ -39,19 +36,19 @@ State intialStateCreation(const ProblemData& data,const map<int, vector<int>> he
             int chosenHeli = options[pickDist(gen)];
 
             // Assign vilageid to chosen Helicopter and push back in the vector
-            intialState.zone[chosenHeli].push_back(vid);
+            state.zone[chosenHeli].push_back(vid);
 
            cout << "Assigned common Village V" << vid<< " to Helicopter H" << chosenHeli << endl;
         }
     }
 
-    //intialise empty helicopter plans
 
-    for(auto& [hid , vid] : helicopterTripList ){
+    //intialise empty helicopter plans
+    for(auto& [hid , vid] : singletonVillageList ){
         HelicopterPlan heli;
         heli.helicopter_id = hid;
-        
-        intialState.helicopterPlan.push_back(heli);        
+
+        state.helicopterPlan.push_back(heli);        
 
     }
 
@@ -76,12 +73,18 @@ State intialStateCreation(const ProblemData& data,const map<int, vector<int>> he
     //         }
     //     }
     // }
-
-    return intialState;
-   
-
 }
 
+void evaluateState(State& state, const ProblemData& data, vector<vector<int>> cityxvilalge, vector<vector<int>> villagexvillage){
+    // Still work in progress.
+    for(Helicopter helicopter : state.helicopterList){
+        cout << "For Helicopter " << helicopter.id << "->";
+        for(int vid : state.zone[helicopter.id]){
+            cout << " " << vid << ", ";
+        }
+        cout << endl;
+    }
+}
 
  map<int, vector<int>> buildReachableMap(const ProblemData& problem) {
     map<int, vector<int>> reachableMap;
@@ -105,7 +108,6 @@ State intialStateCreation(const ProblemData& data,const map<int, vector<int>> he
 
     return reachableMap;
 }
-
 
 vector<vector<int>> calculateVillagexVillage(const ProblemData& problem) {
     int num_villages = problem.villages.size();
@@ -137,6 +139,7 @@ vector<vector<int>> calculateCityxVillage(const ProblemData& problem) {
     }
     return dist;
 }
+
 map<int, set<int>> buildCommonNode(const map<int, vector<int>>& reachableMap) {
     map<int, set<int>> villageToHelis; // village_id -> set of heli_ids
 
@@ -181,8 +184,41 @@ void printCityxVillage(const vector<vector<int>>& dist) {
     }
 }
 
+void printReachableCity(State& state){
+    cout << "------------------- Reachable Villages per Helicopter -------------------" << endl;
+    for (auto& [hid, villages] : state.zone) {
+        cout << "Helicopter H" << hid << " can reach villages: ";
+        if (villages.empty()) cout << "(none)";
+        for (int vid : villages) cout << "V" << vid << " ";
+        cout << endl;
+    }
+}
+
+void printReachableVillages(auto& common){
+    cout << "-----------------------------------------------------------------------" << endl;
+    for (auto& [vid, helis] : common) {
+        cout << "Village " << vid << " is reachable by helicopters: ";
+        for (int hid : helis) {
+            cout << "H" << hid << " ";
+        }
+        cout << endl;
+    }
+}
+
+void printStateInfo(State& state){
+    //This function can be used to print the information regarding any states
+    cout << "---------------------------State info---------------------------" << endl;
+    for(auto& [hid, reachableVillageList] : state.zone){
+        cout << "Helicopter ID : " << hid << " -> { ";
+        for(int vid : reachableVillageList){
+            cout << vid << ", ";
+        } 
+        cout << "}" << endl;
+    }
+}
+
 Solution solve(const ProblemData& problem) {
-    State state;
+    // State state;
 
     cout << "Starting solver..." << endl;
 
@@ -191,7 +227,7 @@ Solution solve(const ProblemData& problem) {
     int hNum = problem.helicopters.size();
     int vNum = problem.villages.size();
 
-    cout<<hNum<<" "<<vNum<<"\n";
+    // cout<<hNum<<" "<<vNum<<"\n";
 
     auto villToVill_Dist = calculateVillagexVillage(problem);
     auto cityToVill_Dist = calculateCityxVillage(problem);
@@ -203,8 +239,8 @@ Solution solve(const ProblemData& problem) {
     auto reachable = buildReachableMap(problem);
     
     // state.zone.insert(reachable.begin() , reachable.end());
-    state.villageList = problem.villages;
-    state.helicopterList = problem.helicopters;
+    // state.villageList = problem.villages;
+    // state.helicopterList = problem.helicopters;
 
     //map1.insert(map2.begin(), map2.end());
     auto common = buildCommonNode(reachable);
@@ -214,8 +250,9 @@ Solution solve(const ProblemData& problem) {
         commonVillages.insert(village);
     }
 
+    // Changing no common to singleTonVillageList
     // Build new map:which contain no common village or does not contain any elemtn from comminVillages
-    map<int, vector<int>> noCommon;
+    map<int, vector<int>> singleTonVillageList;
     
     for (auto& [heli, villages] : reachable) {
         vector<int> uniqueVillages;
@@ -224,68 +261,25 @@ Solution solve(const ProblemData& problem) {
                 uniqueVillages.push_back(v);
             }
         }
-        noCommon[heli] = uniqueVillages; // even if empty
+        singleTonVillageList[heli] = uniqueVillages; // even if empty
     }
     //state.zone = noCommon;
 
     // Print result
-    cout << "Singelton villages per helicopter:\n";
-    for (auto& [heli, villages] : noCommon) {
-        cout << "Helicopter " << heli << " -> ";
-        for (int v : villages) cout << v << " ";
-        cout << endl;
-    }
-
-    State intialState = intialStateCreation(problem , noCommon, common);
-    
-
-    // cout << "------------------- Reachable Villages per Helicopter -------------------" << endl;
-    // for (auto& [hid, villages] : state.zone) {
-    //     cout << "Helicopter H" << hid << " can reach villages: ";
-    //     if (villages.empty()) cout << "(none)";
-    //     for (int vid : villages) cout << "V" << vid << " ";
+    // cout << "Singelton villages per helicopter:\n";
+    // for (auto& [heli, villages] : singleTonVillageList) {
+    //     cout << "Helicopter " << heli << " -> ";
+    //     for (int v : villages) cout << v << " ";
     //     cout << endl;
     // }
 
-    //  cout << "-----------------------------------------------------------------------" << endl;
-    // for (auto& [vid, helis] : common) {
-    //     cout << "Village " << vid << " is reachable by helicopters: ";
-    //     for (int hid : helis) {
-    //         cout << "H" << hid << " ";
-    //     }
-    //     cout << endl;
-    // }
+    State initialstate(singleTonVillageList, problem, solution);
+    createRandomInitialState(initialstate, problem, singleTonVillageList, common);
+    evaluateState(initialstate, problem, cityToVill_Dist, villToVill_Dist);
+    // printStateInfo(initialstate);
+    // State intialState = intialStateCreation(problem , noCommon, common);
 
-    // --- START OF PLACEHOLDER LOGIC ---
-    // This is a naive example: send each helicopter on one trip to the first village.
-    // This will definitely violate constraints but shows the structure.
     
-    // for (const auto& helicopter : problem.helicopters) {
-    //     HelicopterPlan plan;
-    //     plan.helicopter_id = helicopter.id;
-
-    //     if (!problem.villages.empty()) {
-    //         Trip trip;
-    //         // Pickup 1 of each package type
-    //         trip.dry_food_pickup = 1;
-    //         trip.perishable_food_pickup = 1;
-    //         trip.other_supplies_pickup = 1;
-
-    //         // Drop them at the first village
-    //         Drop drop;
-    //         drop.village_id = problem.villages[0].id;
-    //         drop.dry_food = 1;
-    //         drop.perishable_food = 1;
-    //         drop.other_supplies = 1;
-
-    //         trip.drops.push_back(drop);
-    //         plan.trips.push_back(trip);
-    //     }
-    //     solution.push_back(plan);
-    // }
-    
-    // --- END OF PLACEHOLDER LOGIC ---
-
     cout << "Solver finished." << endl;
     return solution;
 }

@@ -32,6 +32,9 @@ struct Village {
     int id;
     Point coords;
     int population;
+    int food_requirement;   // food requirement for that particular village
+    int other_supplies_requirement; //Others requirement for that particular village
+    double value_gained;    // value gained by that village
 };
 
 struct Helicopter {
@@ -71,14 +74,33 @@ struct HelicopterPlan {
     vector<Trip> trips;
 };
 
+
+// Adding a constrcutor to State as to directly add the vilalgelist and helicopterlist to the state
+// Added some other vairables to keep track of all the other dynamic variable related to the code.
 struct State{
     map< int, vector<int>> zone;
     vector<Village> villageList;
     vector<Helicopter> helicopterList;
     vector<HelicopterPlan> helicopterPlan;
+    double f;  // Total Value gained by every village combined
+    double c;  // Total cost incurred by every helicopter combined 
+    double o;  // f - c
 
+    State(map<int, vector<int>> zones, const ProblemData& problem, const vector<HelicopterPlan> helicopter_plan) {
+        zone = zones;
+        helicopterList = problem.helicopters;
+        helicopterPlan = helicopter_plan;
+        villageList = problem.villages;
+
+        // Initialize the requirements and values of all the villages.
+        for(auto& village : villageList) {
+            village.value_gained = 0;
+            village.food_requirement = 9 * village.population; //each person needs 9 units of food
+            village.other_supplies_requirement = village.population; // each person needs 1 unit of
+        }
+        
+    }
 };
-
 
 
 using Solution = vector<HelicopterPlan>;
