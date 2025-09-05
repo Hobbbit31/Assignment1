@@ -44,6 +44,7 @@ struct Helicopter {
     double distance_capacity;
     double fixed_cost; // F
     double alpha;
+    pair<int, int> zone_requirement = {0,0};
 };
 
 struct ProblemData {
@@ -66,6 +67,9 @@ struct Trip {
     int dry_food_pickup;
     int perishable_food_pickup;
     int other_supplies_pickup;
+    int tripOtherRequirment = 0;
+    int tripFoodRequirement = 0;
+    bool done = false;
     vector<Drop> drops;
 };
 
