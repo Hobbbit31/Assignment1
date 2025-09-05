@@ -211,7 +211,7 @@ void createBaseTrips(State& state, const ProblemData& data, vector<vector<int>> 
     
 }
 
- map<int, vector<int>> buildReachableMap(const ProblemData& problem) {
+map<int, vector<int>> buildReachableMap(const ProblemData& problem) {
     map<int, vector<int>> reachableMap;
 
     for (const auto& heli : problem.helicopters) {
