@@ -942,5 +942,6 @@ Solution solve(const ProblemData& problem) {
     //initialstate.helicopterPlan[0].trips = trips;
     printStateInfo(champion);
     cout << "Solver finished." << endl;
+    //adding this new comment
     return champion.helicopterPlan;
 }
