@@ -34,7 +34,7 @@ struct Village {
     int population;
     int food_requirement;   // food requirement for that particular village
     int other_supplies_requirement; //Others requirement for that particular village
-    double value_gained;    // value gained by that village
+    double value_gained = 0;    // value gained by that village
 };
 
 struct Helicopter {
@@ -45,6 +45,7 @@ struct Helicopter {
     double fixed_cost; // F
     double alpha;
     pair<int, int> zone_requirement = {0,0};
+    double distanceTravelledByHeliCopter = 0;
 };
 
 struct ProblemData {
@@ -70,6 +71,7 @@ struct Trip {
     int tripOtherRequirment = 0;
     int tripFoodRequirement = 0;
     bool done = false;
+    double distanceTravelledThisTrip = 0;
     vector<Drop> drops;
 };
 
