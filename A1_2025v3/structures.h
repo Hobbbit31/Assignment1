@@ -97,7 +97,12 @@ struct State{
         helicopterList = problem.helicopters;
         helicopterPlan = helicopter_plan;
         villageList = problem.villages;
-
+        // vector<Helicopter> helicopterList;
+        // //Only Select 1 helicopter from;
+        // for(auto& helicopter : problem.helicopters){
+        //     helicopterList[helicopter.id - 1] = helicopter;
+        // }
+        
         // Initialize the requirements and values of all the villages.
         for(auto& village : villageList) {
             village.value_gained = 0;

@@ -52,7 +52,19 @@ void printStateInfo(State& state){
     }
 }
 
+bool isValidState(State& state, const ProblemData& data){
+    // Check if this State does not Exceed Dmax
+    for(Helicopter& helicopter : state.helicopterList){
+        if(helicopter.distanceTravelledByHeliCopter > data.d_max){
+            cout << "DISTANCE EXCEEDS Dmax" << endl;
+            return false;
+        }
+    }
+    return true;
+}
+
 double objectiveFunction(State& state, ProblemData data){
+    // Calculate and return the Objective Function
     double totalValueGained = 0;
     double totalDistancetravelled = 0;
     double totalCostIncurred = 0;
@@ -176,32 +188,48 @@ void createRandomInitialState(State& state, const ProblemData& data,const map<in
 }
 
 void calculateTripDistances(State& state, vector<vector<int>> cityxvillage, vector<vector<int>> villagexvillage){
+    /*
+    This Function is Defined to calculate Trip Distances covered by each helicopter and the 
+    Total distance travelled by each helicopter and save them in the state itself.
+    */
+
+    // cout << endl;
+    // cout << "------------------------------------------------------HELICOPTER PLAN -----------------------------" << endl;
+    // for(HelicopterPlan plan : state.helicopterPlan){
+    //     cout << "Helicopter Id : " << plan.helicopter_id << endl;
+    //     cout << "Home ID : " << state.helicopterList[plan.helicopter_id - 1].home_city_id << endl;
+    // }
+    // cout << endl;
     for(HelicopterPlan& plan : state.helicopterPlan){
         double totalDistanceTravelledByHelicopter = 0;
-        //cout << "Distance calculation for Helicopter : " << plan.helicopter_id << endl;
+        //cout << "Distance calculation for Helicopter : " << plan.helicopter_id << ", With Home City : " << state.helicopterList[plan.helicopter_id - 1].home_city_id << endl;
+        //cout << "Number of Trips done : " << plan.trips.size() << endl;
         for(Trip& trip : plan.trips){
             double totalDistanceTravelledPerTrip = 0;
             bool isCity = true;
             int previous_vid;
             for(Drop& drop : trip.drops){
                 if(isCity){
-                    totalDistanceTravelledPerTrip += cityxvillage[plan.helicopter_id - 1][drop.village_id -1];
+                    //cout << "\tDistance from City : " << state.helicopterList[plan.helicopter_id - 1].home_city_id << " To Village : " << drop.village_id << " : " << cityxvillage[state.helicopterList[plan.helicopter_id - 1].home_city_id - 1][drop.village_id -1] << endl;
+                    totalDistanceTravelledPerTrip += cityxvillage[state.helicopterList[plan.helicopter_id - 1].home_city_id - 1][drop.village_id -1];
                     isCity = false;
                 }
                 else{
+                    //cout << "\tDistance from village : " << previous_vid << " To Village : " << drop.village_id << " : " << villagexvillage[previous_vid -1][drop.village_id -1] << endl;
                     totalDistanceTravelledPerTrip += villagexvillage[previous_vid -1][drop.village_id -1];
                     
                 }
                 previous_vid = drop.village_id;
 
             }
-            totalDistanceTravelledPerTrip += cityxvillage[plan.helicopter_id - 1][previous_vid -1];
+            totalDistanceTravelledPerTrip += cityxvillage[state.helicopterList[plan.helicopter_id - 1].home_city_id - 1][previous_vid -1];
             trip.distanceTravelledThisTrip = totalDistanceTravelledPerTrip;
             //cout << "\tDistance for this trip : " << totalDistanceTravelledPerTrip << endl;
             totalDistanceTravelledByHelicopter += totalDistanceTravelledPerTrip;
         }
         //cout << "Distance travelled by this Helicopter : " << totalDistanceTravelledByHelicopter << endl;
         state.helicopterList[plan.helicopter_id - 1].distanceTravelledByHeliCopter = totalDistanceTravelledByHelicopter;
+        //cout << endl;
     }
 }
 
@@ -316,8 +344,12 @@ vector<int> fillHelicopter(ProblemData data, int zonefoodRequirements, int zoneO
 
 }
 
-Trip generateTripsViaSupplies(State& state, const ProblemData& data, int helicopterId, vector<int> zoneVillages){
-    //cout << endl << "----------------Checking for trips for : " << helicopterId << "-------------------------" << endl;
+Trip generateTripsViaSupplies(State& state, const ProblemData& data, Helicopter helicopter, vector<int> zoneVillages){
+    /*
+    Breaks trips on the basis of How much supplies the helicopter can complete in its one trip
+    */
+   
+    //cout << endl << "----------------Checking for trips for : " << helicopter.home_city_id << "-------------------------" << endl;
     //First Calculate the requiremenets for this trip.
     int tripOtherRequirements = 0, tripFoodrequirement = 0;
     int i = 0;
@@ -333,8 +365,8 @@ Trip generateTripsViaSupplies(State& state, const ProblemData& data, int helicop
     Trip trip;
     vector<Drop> drops;
     // fill the helicopter according to this trip.
-    vector<int> helicopter = fillHelicopter(data, tripFoodrequirement, tripOtherRequirements, state.helicopterList[helicopterId - 1].weight_capacity);
-    int nd = helicopter[0], np = helicopter[1], no = helicopter[2];
+    vector<int> helicopterWeights = fillHelicopter(data, tripFoodrequirement, tripOtherRequirements, helicopter.weight_capacity);
+    int nd = helicopterWeights[0], np = helicopterWeights[1], no = helicopterWeights[2];
     trip.dry_food_pickup = nd;
     trip.perishable_food_pickup = np;
     trip.other_supplies_pickup = no;
@@ -401,7 +433,13 @@ Trip generateTripsViaSupplies(State& state, const ProblemData& data, int helicop
     return trip;
 }
 
-vector<Trip> generateTripsViaDistance(State& state, const ProblemData& data, int helicopterId, vector<int> zoneVillages, double distanceCap, double dmax, vector<vector<int>> cityxvillage, vector<vector<int>> villagexvillage){
+vector<Trip> generateTripsViaDistance(State& state, const ProblemData& data, Helicopter helicopter, vector<int> zoneVillages, double distanceCap, double dmax, vector<vector<int>> cityxvillage, vector<vector<int>> villagexvillage){
+    /*
+    Returns the trips that can be complete by the helicopter based on its distance and then 
+    uses the helper fucntion generateTripsViaSupplies to break it down even further and 
+    return the actual trips of helicopeter
+    */
+
     int j = 0;
     bool newTrip = true;
     int totalDistanceTravelledPerTrip = 0;
@@ -413,8 +451,8 @@ vector<Trip> generateTripsViaDistance(State& state, const ProblemData& data, int
             || state.villageList[zoneVillages[j] - 1].food_requirement != 0){
                 // Distance from base to next village
                 if(newTrip){
-                    //cout << "New TRIP distance from base : " << helicopterId << " To : " << zoneVillages[j] << endl;
-                    totalDistanceTravelledPerTrip += cityxvillage[helicopterId -1][zoneVillages[j] - 1];
+                    //cout << "New TRIP distance from base : " << helicopter.home_city_id << " To : " << zoneVillages[j] << endl;
+                    totalDistanceTravelledPerTrip += cityxvillage[helicopter.home_city_id -1][zoneVillages[j] - 1];
                     newTrip = false;
                 }
                 // Distance from previous village to current village
@@ -423,14 +461,14 @@ vector<Trip> generateTripsViaDistance(State& state, const ProblemData& data, int
                     totalDistanceTravelledPerTrip += villagexvillage[zoneVillages[j - 1] - 1][zoneVillages[j] - 1];
                 }
                 //cout << "total distance travelled till now : " << totalDistanceTravelledPerTrip << endl;
-                distanceRequiredToReachBase = totalDistanceTravelledPerTrip + cityxvillage[helicopterId - 1][zoneVillages[j] - 1];
+                distanceRequiredToReachBase = totalDistanceTravelledPerTrip + cityxvillage[helicopter.home_city_id - 1][zoneVillages[j] - 1];
                 //cout << "Distance Required to reach base : " << distanceRequiredToReachBase << endl;
                 if(distanceRequiredToReachBase <= distanceCap){
                     j++;
                 }
                 else{
                     //cout << "Calling Trip 1" << endl;
-                    Trip trip = generateTripsViaSupplies(state, data, helicopterId, vector<int>(zoneVillages.begin(), zoneVillages.begin() + j));
+                    Trip trip = generateTripsViaSupplies(state, data, helicopter, vector<int>(zoneVillages.begin(), zoneVillages.begin() + j));
                     trips.push_back(trip);
                     j = 0;
                     totalDistanceTravelledPerTrip = 0;
@@ -439,7 +477,7 @@ vector<Trip> generateTripsViaDistance(State& state, const ProblemData& data, int
                 }
                 if(j == zoneVillages.size()){
                     //cout << "Calling Trip 2" << endl;
-                    Trip trip = generateTripsViaSupplies(state, data, helicopterId, vector<int>(zoneVillages.begin(), zoneVillages.begin() + j));
+                    Trip trip = generateTripsViaSupplies(state, data, helicopter, vector<int>(zoneVillages.begin(), zoneVillages.begin() + j));
                     trips.push_back(trip);
                     j = 0;
                     totalDistanceTravelledPerTrip = 0;
@@ -456,13 +494,15 @@ vector<Trip> generateTripsViaDistance(State& state, const ProblemData& data, int
 
 void generateTrips2(State& state, const ProblemData& data, vector<vector<int>> cityxvillage, vector<vector<int>> villagexvillage){
     for(Helicopter helicopter : state.helicopterList){
-        vector<Trip> tripForThisHelicopter = generateTripsViaDistance(state, data, helicopter.id, state.zone[helicopter.id], helicopter.distance_capacity, helicopter.weight_capacity, cityxvillage, villagexvillage);
+        //cout << "Generating Trip for Helicopter : " << helicopter.id << endl;
+        vector<Trip> tripForThisHelicopter = generateTripsViaDistance(state, data, helicopter, state.zone[helicopter.id], helicopter.distance_capacity, helicopter.weight_capacity, cityxvillage, villagexvillage);
         state.helicopterPlan[helicopter.id - 1].trips = tripForThisHelicopter;
     }
 }
 
 vector<Trip> generateTrips( int helicopterId, double distanceCap, vector<int> zoneVillages, vector<vector<int>> cityxvillage, vector<vector<int>> villagexvillage){
     /*
+    USELESS FOR THE TIME BEING
     This function is used to traverse through the given set of zone villages which are reachable by helicopterID
     and create the trips based on the distance capacity of the helicopter
     */
@@ -525,6 +565,7 @@ vector<Trip> generateTrips( int helicopterId, double distanceCap, vector<int> zo
 
 void createBaseTrips(State& state, const ProblemData& data, vector<vector<int>> cityxvillage, vector<vector<int>> villagexvillage){
     /*
+    USELESS FOR THE TIME BEING
     This function defines 1 possible trip on the basis of distance.
     It defines a trip in order {v1, v2, v3, .... vn}{ other trips}
     if the helicopter can visit villages v1 -> v2 -> .... vn in that order
@@ -585,6 +626,9 @@ void createBaseTrips(State& state, const ProblemData& data, vector<vector<int>> 
 }
 
 void dropSupplies(State& state, const ProblemData& data, vector<vector<int>> cityxvillage, vector<vector<int>> villagexvillage){
+    /*
+    USELESS FOR THE TIME BEING
+    */
     for(HelicopterPlan& helicopterPlan : state.helicopterPlan){
         cout << "Droppings of Helicopter : " << helicopterPlan.helicopter_id << endl;
         while(true){
@@ -674,6 +718,9 @@ void dropSupplies(State& state, const ProblemData& data, vector<vector<int>> cit
 }
 
 void applyTrips(State& state, const ProblemData& data, vector<vector<int>> cityxvillage, vector<vector<int>> villagexvillage){
+    /*
+    USELESS FOR THE TIME BEING
+    */
     vector<vector<pair<int, int>>> helicopterTripsRequirement;
     for(HelicopterPlan& helicopterPlan : state.helicopterPlan){
         vector<pair<int, int>> totalZoneRequirment;
@@ -770,7 +817,6 @@ map<int, set<int>> buildCommonNode(const map<int, vector<int>>& reachableMap) {
             villageToHelis[vid].insert(hid);
         }
     }
-
     // Filter only those villages that are reachable by more than 1 heli
     map<int, set<int>> common;
     for (auto& [vid, helis] : villageToHelis) {
@@ -778,8 +824,30 @@ map<int, set<int>> buildCommonNode(const map<int, vector<int>>& reachableMap) {
             common[vid] = helis;
         }
     }
-
     return common;
+}
+
+map<int, vector<int>> buildSingletonVillages(
+    const map<int, vector<int>>& reachable,
+    const map<int, set<int>>& common) 
+{
+    set<int> commonVillages;
+    for (auto& [village, helis] : common) {
+        commonVillages.insert(village);
+    }
+
+    map<int, vector<int>> singleTonVillageList;
+    for (auto& [heli, villages] : reachable) {
+        vector<int> uniqueVillages;
+        for (int v : villages) {
+            if (commonVillages.find(v) == commonVillages.end()) {
+                uniqueVillages.push_back(v);
+            }
+        }
+        singleTonVillageList[heli] = uniqueVillages; // can be empty
+    }
+
+    return singleTonVillageList;
 }
 
 void printVillagexVillage(const vector<vector<int>>& dist) {
@@ -827,13 +895,31 @@ void printReachableVillages(auto& common){
     }
 }
 
+void removeMultipleHelicopter(ProblemData& data){
+    vector<int> indexesOfDucplicate = {};
+    set<int> alreadyhave;
+    for(Helicopter helicopter : data.helicopters){
+        if(alreadyhave.find(helicopter.id) == alreadyhave.end()){
+            alreadyhave.insert(helicopter.id);
+        }
+        else{
+            indexesOfDucplicate.push_back(helicopter.id);
+        }
+    }
+    for(int i = 0; i < indexesOfDucplicate.size(); i++){
+        data.helicopters.erase(data.helicopters.begin() + indexesOfDucplicate[i] - i);
+    }
+}
+
 Solution solve(const ProblemData& problem) {
     // State state;
 
     cout << "Starting solver..." << endl;
     auto start = high_resolution_clock::now();
     Solution solution;
-    int TIME_LIMIT = 58;
+    int TIME_LIMIT = 10;
+
+    
     int hNum = problem.helicopters.size();
     int vNum = problem.villages.size();
 
@@ -855,7 +941,6 @@ Solution solve(const ProblemData& problem) {
     //map1.insert(map2.begin(), map2.end());
     auto common = buildCommonNode(reachable);
     cout << endl;
-    //printReachableVillages(common);
     set<int> commonVillages;
     for (auto& [village, helis] : common) {
         commonVillages.insert(village);
@@ -863,47 +948,61 @@ Solution solve(const ProblemData& problem) {
 
     // Changing no common to singleTonVillageList
     // Build new map:which contain no common village or does not contain any elemtn from comminVillages
-    map<int, vector<int>> singleTonVillageList;
+    map<int, vector<int>> singleTonVillageList = buildSingletonVillages(reachable, common);
     
-    for (auto& [heli, villages] : reachable) {
-        vector<int> uniqueVillages;
-        for (int v : villages) {
-            if (commonVillages.find(v) == commonVillages.end()) {
-                uniqueVillages.push_back(v);
-            }
-        }
-        singleTonVillageList[heli] = uniqueVillages; // even if empty
-    }
     //state.zone = noCommon;
 
     // Print result
-    // cout << endl;
-    // cout << "Singelton villages per helicopter:\n";
-    // for (auto& [heli, villages] : singleTonVillageList) {
-    //     cout << "Helicopter " << heli << " -> ";
+    // Print common villages
+    // cout << "Common villages (reachable by >1 heli):\n";
+    // for (auto& [vid, helis] : common) {
+    //     cout << "Village " << vid << " -> ";
+    //     for (int h : helis) cout << h << " ";
+    //     cout << endl;
+    // }
+
+    // // Print singleton villages
+    // cout << "\nSingleton villages per helicopter:\n";
+    // for (auto& [hid, villages] : singleTonVillageList) {
+    //     cout << "Helicopter " << hid << " -> ";
     //     for (int v : villages) cout << v << " ";
     //     cout << endl;
     // }
 
-
     State initialstate(singleTonVillageList, problem, solution);
     createRandomInitialState(initialstate, problem, singleTonVillageList, common);
-
     State current = initialstate;
-    // vector<State> neighbours = generateNeighbourhood(stateClone, common);
-    // vector<State> neighboursClone = neighbours;
-
+    cout << endl;
     generateTrips2(initialstate, problem, cityToVill_Dist, villToVill_Dist);
     calculateTripDistances(initialstate, cityToVill_Dist, villToVill_Dist);
     double maxObjectiveValue = objectiveFunction(initialstate, problem);
-
-    cout << "Objective Value of Initital : " << maxObjectiveValue << endl;
+    //printStateInfo(current);
+    //cout << "After Generating Trips" << endl;
+    //cout << endl;
+    //cout << "Objective Value of Initital : " << maxObjectiveValue << endl;
+    //cout << endl;
+    //printStateInfo(initialstate);
+    // cout << endl;
+    // for(Helicopter helicopter : initialstate.helicopterList){
+    //     cout << "Helicopter ID : " << helicopter.id << endl;
+    //     cout << "Helicopter City ID : " << helicopter.home_city_id << endl; 
+    // }
+    // cout << endl;
+    // for(HelicopterPlan plan : initialstate.helicopterPlan){
+    //     cout << "Helicopter Id : " << plan.helicopter_id << endl;
+    //     cout << "Home ID : " << initialstate.helicopterList[plan.helicopter_id - 1].home_city_id << endl;
+    // }
+    // cout << endl;
+    // vector<State> neighbours = generateNeighbourhood(stateClone, common);
+    // vector<State> neighboursClone = neighbours;
 
     State champion = initialstate;  
+    // This loop is used for Random jump
     while(true){
         auto now = high_resolution_clock::now();
         auto duration = duration_cast<seconds>(now - start);
         if(duration.count() >= TIME_LIMIT){
+            //if we are above time limit we break out
             break;
         }
         double maxObjectiveValueOfNeighbours = INT_MIN;
@@ -919,7 +1018,7 @@ Solution solve(const ProblemData& problem) {
                 indexOfMaxNeighbour = i;
             }
         }
-        if(maxObjectiveValueOfNeighbours > champion.o){
+        if(isValidState(neighboursclone[indexOfMaxNeighbour], problem) && maxObjectiveValueOfNeighbours > champion.o){
             champion = neighboursclone[indexOfMaxNeighbour];
         }
         if(maxObjectiveValueOfNeighbours > current.o){
@@ -932,16 +1031,12 @@ Solution solve(const ProblemData& problem) {
         }
     }
     
-    //printStateInfo(initialstate);
-    //createBaseTrips(initialstate, problem, cityToVill_Dist, villToVill_Dist);
-    //applyTrips(initialstate, problem, cityToVill_Dist, villToVill_Dist);
-    //dropSupplies(initialstate, problem, cityToVill_Dist, villToVill_Dist);
-    //cout << "BACK FROM EVALUATION" << endl;
-    //printStateInfo(initialstate);
-    //vector<Trip> trips = generateTripsViaDistance(initialstate, problem, 1, {1, 2, 3, 4, 5, 6}, 130, 500, cityToVill_Dist, villToVill_Dist);
-    //initialstate.helicopterPlan[0].trips = trips;
     printStateInfo(champion);
     cout << "Solver finished." << endl;
-    //adding this new comment
+    //Check if our state is valid 
+    // if not then return dummy answer : this will be only possible if no helicopter can complete its trip without capping over Dmax
+    //else return the champion node.
+    if(!isValidState(champion, problem)) return solution;
+    cout << "Returning;" << endl;
     return champion.helicopterPlan;
 }
