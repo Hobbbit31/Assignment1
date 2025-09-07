@@ -34,7 +34,7 @@ struct Village {
     int population;
     int food_requirement;   // food requirement for that particular village
     int other_supplies_requirement; //Others requirement for that particular village
-    double value_gained;    // value gained by that village
+    double value_gained = 0;    // value gained by that village
 };
 
 struct Helicopter {
@@ -44,6 +44,8 @@ struct Helicopter {
     double distance_capacity;
     double fixed_cost; // F
     double alpha;
+    pair<int, int> zone_requirement = {0,0};
+    double distanceTravelledByHeliCopter = 0;
 };
 
 struct ProblemData {
@@ -66,6 +68,10 @@ struct Trip {
     int dry_food_pickup;
     int perishable_food_pickup;
     int other_supplies_pickup;
+    int tripOtherRequirment = 0;
+    int tripFoodRequirement = 0;
+    bool done = false;
+    double distanceTravelledThisTrip = 0;
     vector<Drop> drops;
 };
 
@@ -91,7 +97,12 @@ struct State{
         helicopterList = problem.helicopters;
         helicopterPlan = helicopter_plan;
         villageList = problem.villages;
-
+        // vector<Helicopter> helicopterList;
+        // //Only Select 1 helicopter from;
+        // for(auto& helicopter : problem.helicopters){
+        //     helicopterList[helicopter.id - 1] = helicopter;
+        // }
+        
         // Initialize the requirements and values of all the villages.
         for(auto& village : villageList) {
             village.value_gained = 0;
